@@ -1,143 +1,155 @@
-Personal Flask App with Docker and Kubernetes on Docker Desktop
+# Flask App with Docker and Kubernetes on Docker Desktop
 
-This repository demonstrates how to build a Dockerized Flask application, create a Kubernetes cluster on Docker Desktop, and deploy the application using Kubernetes resources like Deployment, Service, ServiceAccount, and more. It also includes configuration for accessing the app via a NodePort, and explains how to set up a local Docker registry for pushing and pulling images. The setup is fully contained within your local machine, making it ideal for local development and testing with Kubernetes.
-Prerequisites
+This repository demonstrates how to build, containerize, and deploy a Flask web application using Docker and Kubernetes. The setup uses Docker Desktop with an integrated Kubernetes cluster to run the app in a local development environment. The project includes everything from creating a Docker image for the Flask app to deploying it with Kubernetes resources like `Deployment`, `Service`, and `ServiceAccount`.
 
-    Docker Desktop installed with Kubernetes enabled.
-    A working knowledge of Docker, Flask, and Kubernetes.
-    Basic understanding of kubectl and docker commands.
-    A local Docker registry running (if pushing images to a custom registry).
+## Table of Contents
 
-Additional Requirements:
+- [Prerequisites](#prerequisites)
+- [Directory Structure](#directory-structure)
+- [Setup Instructions](#setup-instructions)
+  - [1. Build the Docker Image](#1-build-the-docker-image)
+  - [2. Configure Kubernetes Cluster](#2-configure-kubernetes-cluster)
+  - [3. Apply Kubernetes Resources](#3-apply-kubernetes-resources)
+  - [4. Access the Flask Application](#4-access-the-flask-application)
+  - [5. Troubleshooting](#5-troubleshooting)
+  - [6. Clean Up Resources](#6-clean-up-resources)
+- [Docker Desktop Configuration](#docker-desktop-configuration)
+- [Conclusion](#conclusion)
+- [License](#license)
 
-    Ensure that kubectl is installed and properly configured to communicate with the Kubernetes cluster in Docker Desktop.
-    Make sure that Docker Desktop's Kubernetes is running and that you're connected to the correct context in your kubectl configuration.
+## Prerequisites
 
-Directory Structure
+- **Docker Desktop** with Kubernetes enabled. If you don't have Docker Desktop, [download it here](https://www.docker.com/products/docker-desktop).
+- Basic knowledge of Docker, Flask, and Kubernetes.
+- Familiarity with `kubectl` and Docker commands.
+- Local Docker registry setup at `10.0.0.3:5000`.
 
+## Directory Structure
+
+```plaintext
 .
-├── app.py
-├── cluster-role-binding.yaml
-├── deployment.yaml
-├── Dockerfile
-├── requirements.txt
-├── service.yaml
-└── service-account.yaml
+├── app.py                # Flask application
+├── cluster-role-binding.yaml  # Kubernetes RBAC configuration
+├── deployment.yaml       # Kubernetes Deployment for Flask app
+├── Dockerfile            # Dockerfile to build the Flask app container
+├── requirements.txt      # Python dependencies for Flask
+├── service.yaml          # Kubernetes Service to expose Flask app
+└── service-account.yaml  # Kubernetes ServiceAccount configuration
+```
+# Setup Instructions
 
-File Overview
+### 1. Build the Docker Image
 
-    app.py: The main Flask application that serves a simple "Hello, Docker!" message.
-    cluster-role-binding.yaml: Kubernetes RBAC configuration to bind the service account to the cluster-admin role.
-    deployment.yaml: Kubernetes Deployment resource to manage the app's lifecycle.
-    Dockerfile: The Dockerfile used to build the Docker image for the Flask app.
-    requirements.txt: Python dependencies for the Flask app.
-    service.yaml: Kubernetes Service resource to expose the Flask app on a NodePort.
-    service-account.yaml: Kubernetes ServiceAccount configuration for the app.
+To containerize the Flask app, follow the steps below:
 
-Step-by-Step Setup
-1. Build the Docker Image
+1. **Clone the repository** to your local machine:
 
-First, we need to build the Docker image for our Flask app. This is done using the Dockerfile provided.
-Clone the repository:
+    ```bash
+    git clone https://github.com/your-username/your-repository.git
+    cd your-repository
+    ```
 
-git clone https://github.com/your-username/your-repository.git
-cd your-repository
+2. **Build the Docker image** using the provided Dockerfile. The image will be tagged as `10.0.0.3:5000/my-app:latest` for use with your local Docker registry.
 
-Build the Docker image:
+    ```bash
+    docker build -t 10.0.0.3:5000/my-app:latest .
+    ```
 
-docker build -t 10.0.0.3:5000/my-app:latest .
+3. **Push the Docker image** to the local registry. Make sure your Docker Desktop is configured to use an insecure registry (`10.0.0.3:5000`). You can do this under **Settings > Docker Engine** in Docker Desktop.
 
-Push the Docker image to the local Docker registry:
+    After the registry is set up, push the image using the following command:
 
-Before you can push the image, ensure that the Docker registry is running on 10.0.0.3:5000. Docker Desktop automatically provides a registry if configured, or you can manually start a local registry with:
+    ```bash
+    docker push 10.0.0.3:5000/my-app:latest
+    ```
 
-docker run -d -p 5000:5000 --name registry registry:2
+### 2. Configure Kubernetes Cluster
 
-Push the Docker image:
+Ensure that Kubernetes is enabled in Docker Desktop:
 
-docker push 10.0.0.3:5000/my-app:latest
+1. Open Docker Desktop.
+2. Navigate to **Settings > Kubernetes** and enable Kubernetes.
+3. Wait for the Kubernetes cluster to initialize.
 
-2. Configure Kubernetes Cluster on Docker Desktop
+### 3. Apply Kubernetes Resources
 
-Ensure that Kubernetes is enabled on your Docker Desktop:
+Now, we need to deploy the Flask app to Kubernetes:
 
-    Open Docker Desktop and go to Settings > Kubernetes.
-    Enable Kubernetes and wait for the cluster to initialize.
+1. **Create the Service Account:**
 
-Verify the Kubernetes cluster is running:
+    Apply the service account configuration:
 
-kubectl cluster-info
+    ```bash
+    kubectl apply -f service-account.yaml
+    ```
 
-This should output the API server's URL, indicating that your cluster is running.
-3. Apply Kubernetes Configurations
+2. **Create the Cluster Role Binding:**
 
-Next, we need to configure Kubernetes to deploy our Flask app.
-Create the Service Account:
+    Apply the RBAC configuration to bind the service account to the appropriate role:
 
-kubectl apply -f service-account.yaml
+    ```bash
+    kubectl apply -f cluster-role-binding.yaml
+    ```
 
-Create the Cluster Role Binding (to grant cluster-admin privileges):
+3. **Deploy the Flask App:**
 
-kubectl apply -f cluster-role-binding.yaml
+    Apply the deployment configuration to run the Flask app in Kubernetes:
 
-Deploy the Flask App:
+    ```bash
+    kubectl apply -f deployment.yaml
+    ```
 
-kubectl apply -f deployment.yaml
+4. **Expose the Flask App with a Service:**
 
-Expose the Flask App with a Service:
+    Finally, expose the Flask app to external traffic:
 
-kubectl apply -f service.yaml
+    ```bash
+    kubectl apply -f service.yaml
+    ```
 
-4. Access the Flask Application
+### 4. Access the Flask Application
 
-After the Kubernetes resources are created, you can access your Flask app via the NodePort specified in service.yaml.
+Once the resources are applied, you can access your Flask app using the NodePort specified in `service.yaml`. For example, if the `nodePort` is set to `31000`, open a web browser and go to: `http://localhost:31000`
 
-If you used nodePort: 31000, open your browser and visit:
+You should see the message `Hello, Docker!`.
 
-http://localhost:31000
+### 5. Troubleshooting
 
-You should see the message "Hello, Docker!" from your Flask app.
-5. Troubleshooting and Debugging
+If you encounter issues, use the following commands to troubleshoot:
 
-If you encounter any issues, here are some common troubleshooting commands:
-Check the status of your pods:
+1. **View the status of your pods:**
 
-kubectl get pods
+    ```bash
+    kubectl get pods
+    ```
 
-View logs for a specific pod:
+2. **Check the logs of a specific pod:**
 
-kubectl logs <pod-name>
+    ```bash
+    kubectl logs <pod-name>
+    ```
 
-Check the services and their exposed ports:
+3. **List services to ensure the Flask app is exposed:**
 
-kubectl get services
+    ```bash
+    kubectl get services
+    ```
 
-Check the deployment status:
+### 6. Clean Up Resources
 
-kubectl describe deployment flask-app
+To delete the Kubernetes resources (deployment, service, and service account), run:
 
-Check the current Kubernetes context (ensure you're connected to the correct cluster):
-
-kubectl config current-context
-
-Common issues:
-
-    ErrImagePull: If your pods are stuck in ErrImagePull, ensure that the Docker registry is running and accessible, and the image name is correct. If using a private registry, ensure that Kubernetes is correctly configured to access it (using imagePullSecrets if necessary).
-    Pod is CrashLoopBackOff: Inspect pod logs and check for application errors (e.g., Flask application issues).
-
-6. Clean Up Resources
-
-To delete the Kubernetes resources (deployment, service, service account), run:
-
+```bash
 kubectl delete -f deployment.yaml
 kubectl delete -f service.yaml
 kubectl delete -f service-account.yaml
 kubectl delete -f cluster-role-binding.yaml
+```
+## Docker Desktop Configuration
 
-Docker Desktop Configuration
+Ensure that Docker is configured with the local registry (`10.0.0.3:5000`). Add the following to your Docker configuration file (`/etc/docker/daemon.json` or Docker Desktop settings):
 
-Ensure that you have the following Docker configuration for the local registry (/etc/docker/daemon.json or Docker Desktop settings):
-
+```json
 {
   "builder": {
     "gc": {
@@ -150,30 +162,12 @@ Ensure that you have the following Docker configuration for the local registry (
     "10.0.0.3:5000"
   ]
 }
+```
+## Conclusion
 
-This configuration allows Docker to push and pull images from the local registry at 10.0.0.3:5000.
-Kubernetes Proxy Token Setup (If Needed)
+You have successfully built and deployed a Flask web application in a local Kubernetes cluster using Docker Desktop. This setup can be used for local development and testing, providing a simple but effective environment for working with Docker and Kubernetes.
 
-If you encounter issues with Kubernetes authentication via proxy tokens or service account tokens, ensure that the Kubernetes context is correctly configured. If necessary, generate a new service account and token:
-Create a new service account (if the old token is invalid):
+## License
 
-kubectl create -f service-account.yaml
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Generate a new token:
-
-kubectl create token new-service-account -n default
-
-Set the new token for kubectl:
-
-kubectl config set-credentials new-user --token=<new-token>
-kubectl config set-context $(kubectl config current-context) --user=new-user
-
-Advanced: Stateful Deployment and Persistent Storage
-
-For more complex applications, you may need StatefulSets or Persistent Volumes for stateful applications. In these cases, modify the deployment.yaml to handle StatefulSets and configure persistent storage using PersistentVolume (PV) and PersistentVolumeClaim (PVC) for database storage, for example.
-Conclusion
-
-You’ve successfully built and deployed a Flask application within a Dockerized Kubernetes cluster using Docker Desktop. This setup provides a comprehensive local development environment for testing and experimentation with Docker and Kubernetes.
-License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
